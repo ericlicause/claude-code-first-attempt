@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<!--
+  ============================================================
+  STYLE (CSS): how the page LOOKS — colors, fonts, spacing.
+  Nothing in here changes how the app behaves.
+  ============================================================
+-->
+<style>
+  /* Layout: a header with the reset countdown, then a grid of cards (one per character or area). */
+  :root {
+    --bg: #eceff3;
+    --surface: #ffffff;
+    --fg: #1a2130;
+    --muted: #5b6676;
+    --line: #d4d9e1;
+    --accent: #a8650a;       /* amber, like a cooldown timer */
+    --accent-soft: #f6e7cf;
+    --done: #2c8556;
+    --danger: #b3362c;
+    --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10141b; --surface: #19202a; --fg: #e5e9ef; --muted: #8e98a7; --line: #2a3340;
+      --accent: #e3a43c; --accent-soft: #3a2c15; --done: #4fbf83; --danger: #ef6b5f;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10141b; --surface: #19202a; --fg: #e5e9ef; --muted: #8e98a7; --line: #2a3340;
+    --accent: #e3a43c; --accent-soft: #3a2c15; --done: #4fbf83; --danger: #ef6b5f;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.45 var(--font-body);
+  }
+  .page { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 20px; }
+
+  /* ---- Header ---- */
+  .top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+  h1 { font: 600 30px/1.1 var(--font-display); margin: 0; letter-spacing: 0.01em; }
+  .sub { margin: 4px 0 0; color: var(--muted); }
+  .reset { text-align: right; }
+  .reset-label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .reset-time { font: 500 26px/1.1 var(--font-mono); color: var(--accent); font-variant-numeric: tabular-nums; }
+
+  .banner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 14px; border-radius: 8px; background: var(--accent-soft); color: var(--fg);
+  }
+
+  /* ---- Cards ---- */
+  .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; align-items: start; }
+  .group {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px; display: grid; gap: 10px; min-width: 0;
+  }
+  .group.is-complete { border-color: var(--done); }
+  .group-head { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+  h2 { font: 600 18px/1.2 var(--font-display); margin: 0; overflow-wrap: anywhere; }
+  .note { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+  .count { font: 500 14px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .group.is-complete .count { color: var(--done); }
+
+  /* ---- Tasks ---- */
+  .tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .task { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .task input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--done); flex: none; cursor: pointer; }
+  .task label { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: pointer; }
+  .task.is-done label { color: var(--muted); text-decoration: line-through; }
+  .badge {
+    font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px;
+  }
+  .badge.daily { color: var(--accent); border-color: var(--accent); }
+  .empty { margin: 0; color: var(--muted); font-size: 14px; }
+
+  /* ---- Forms and buttons ---- */
+  form { display: flex; flex-wrap: wrap; gap: 6px; }
+  input[type="text"], select {
+    font: inherit; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0;
+  }
+  input[type="text"] { flex: 1 1 140px; }
+  button {
+    font: inherit; font-weight: 500; cursor: pointer; border-radius: 6px; padding: 6px 12px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  button.link { border: none; background: none; padding: 2px 0; color: var(--muted); font-size: 13px; }
+  button.link:hover { color: var(--danger); }
+  button.danger { background: var(--danger); border-color: var(--danger); color: var(--surface); }
+  .icon-btn { border: none; background: none; padding: 0 4px; color: var(--muted); font-size: 18px; line-height: 1; }
+  .icon-btn:hover { color: var(--danger); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .card-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+  .new-group { border-style: dashed; }
+  .new-group h2 { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!--
+  ============================================================
+  STRUCTURE (HTML): the fixed parts of the page.
+  The cards themselves are built by the JavaScript below,
+  because they change every time you add or check something.
+  ============================================================
+-->
+<div class="page">
+  <header class="top">
+    <div>
+      <h1>Daily Board</h1>
+      <p class="sub" id="summary"></p>
+    </div>
+    <div class="reset">
+      <span class="reset-label" id="reset-label">Daily reset in</span>
+      <span class="reset-time" id="countdown"></span>
+    </div>
+  </header>
+
+  <div class="banner" id="example-banner" hidden>
+    <span>These groups are examples so you can see how it works. Clear them when you're ready to add your own.</span>
+    <button type="button" id="clear-examples">Clear examples</button>
+  </div>
+
+  <main class="groups" id="groups"></main>
+</div>
+
+<!--
+  ============================================================
+  BEHAVIOR (JavaScript): what the page DOES.
+  Read it top to bottom; each numbered section builds on the last.
+  ============================================================
+-->
+<script>
+// ===== 1. SETTINGS =====================================================
+// The hour (0-23) when "daily" tasks uncheck themselves.
+// 0 = midnight, 3 = 3 AM, 15 = 3 PM. Change this number to move the reset.
+const RESET_HOUR = 0;
+
+// The name your data is saved under in the browser.
+const STORAGE_KEY = 'dailyBoard.v1';
+
+
+// ===== 2. DATA =========================================================
+// Everything the app knows lives in one object called `board`. Its shape:
+//
+//   board = {
+//     groups: [
+//       { id, name, note, example, tasks: [
+//           { id, name, repeat: 'daily' or 'once', doneAt: null or a timestamp }
+//       ] }
+//     ]
+//   }
+//
+// Notice a task doesn't store "checked: true". It stores WHEN you checked it
+// (doneAt). Section 3 uses that time to decide if it still counts as done.
+
+const EXAMPLE_BOARD = {
+  groups: [
+    { id: 'ex1', name: 'Thrall', note: 'Area 52 · Alchemy', example: true, tasks: [
+      { id: 'ex1a', name: 'Daily transmute', repeat: 'daily', doneAt: null },
+      { id: 'ex1b', name: 'Repost auctions', repeat: 'daily', doneAt: null },
+    ] },
+    { id: 'ex2', name: 'Jaina', note: 'Stormrage · Tailoring', example: true, tasks: [
+      { id: 'ex2a', name: 'Craft cloth cooldown', repeat: 'daily', doneAt: null },
+      { id: 'ex2b', name: 'Repost auctions', repeat: 'daily', doneAt: null },
+    ] },
+    { id: 'ex3', name: 'Tarkov', note: 'PMC', example: true, tasks: [
+      { id: 'ex3a', name: 'Run a scav raid', repeat: 'daily', doneAt: null },
+      { id: 'ex3b', name: 'Sell loot on the flea market', repeat: 'daily', doneAt: null },
+      { id: 'ex3c', name: 'Find 2 gas analyzers for Therapist', repeat: 'once', doneAt: null },
+    ] },
+    { id: 'ex4', name: 'Real life', note: '', example: true, tasks: [
+      { id: 'ex4a', name: 'Workout', repeat: 'daily', doneAt: null },
+      { id: 'ex4b', name: 'Renew passport', repeat: 'once', doneAt: null },
+    ] },
+  ],
+};
+
+// Load the saved board, or start with the examples if nothing is saved yet.
+function load() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch (error) { /* storage blocked: fall through to the examples */ }
+  return structuredClone(EXAMPLE_BOARD);
+}
+
+// Save the board. Called after every change.
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(board)); } catch (error) { /* storage blocked */ }
+}
+
+let board = load();
+let pendingDeleteGroupId = null;   // which group is showing "Are you sure?"
+let focusInputId = null;           // which text box to put the cursor back in after redrawing
+
+
+// ===== 3. RESET LOGIC ==================================================
+// This is the heart of the app. To change how resets work later
+// (a different hour, weekly resets, "every 20 hours"), this is where to look.
+
+// The most recent reset that has already happened.
+function lastReset(now) {
+  const reset = new Date(now);
+  reset.setHours(RESET_HOUR, 0, 0, 0);          // today at the reset hour
+  if (reset > now) reset.setDate(reset.getDate() - 1);   // not yet today? use yesterday's
+  return reset;
+}
+
+// The next reset that hasn't happened yet.
+function nextReset(now) {
+  const reset = lastReset(now);
+  reset.setDate(reset.getDate() + 1);
+  return reset;
+}
+
+// Is this task done right now?
+function isDone(task) {
+  if (task.doneAt === null) return false;        // never checked
+  if (task.repeat === 'once') return true;       // one-time tasks stay done
+  return task.doneAt >= lastReset(new Date()).getTime();   // daily: done since the last reset?
+}
+
+
+// ===== 4. ACTIONS ======================================================
+// Each one changes `board`, saves it, and redraws the page.
+
+function newId() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function toggleTask(task) {
+  task.doneAt = isDone(task) ? null : Date.now();
+  save(); render();
+}
+
+function addTask(group, name, repeat) {
+  group.tasks.push({ id: newId(), name, repeat, doneAt: null });
+  focusInputId = 'new-task-' + group.id;
+  save(); render();
+}
+
+function deleteTask(group, task) {
+  group.tasks = group.tasks.filter(t => t !== task);
+  save(); render();
+}
+
+function addGroup(name, note) {
+  board.groups.push({ id: newId(), name, note, example: false, tasks: [] });
+  focusInputId = 'new-group-name';
+  save(); render();
+}
+
+function deleteGroup(group) {
+  board.groups = board.groups.filter(g => g !== group);
+  pendingDeleteGroupId = null;
+  save(); render();
+}
+
+function clearExamples() {
+  board.groups = board.groups.filter(g => !g.example);
+  save(); render();
+}
+
+
+// ===== 5. DRAWING THE PAGE =============================================
+// render() throws away the cards and rebuilds them from `board`.
+// That way the screen always matches the data exactly.
+
+// Small helper for creating page elements:
+//   el('button', { type: 'button', onclick: doThing }, 'Click me')
+function el(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+    else if (key.includes('-')) node.setAttribute(key, value);
+    else node[key] = value;
+  }
+  for (const child of children) if (child !== null) node.append(child);
+  return node;
+}
+
+function renderTask(group, task) {
+  const done = isDone(task);
+  const checkboxId = 'task-' + task.id;
+  return el('li', { className: done ? 'task is-done' : 'task' },
+    el('input', { type: 'checkbox', id: checkboxId, checked: done, onchange: () => toggleTask(task) }),
+    el('label', { htmlFor: checkboxId }, task.name),
+    el('span', { className: 'badge ' + task.repeat }, task.repeat),
+    el('button', { type: 'button', className: 'icon-btn', 'aria-label': 'Delete ' + task.name,
+                   onclick: () => deleteTask(group, task) }, '×'),
+  );
+}
+
+function renderGroup(group) {
+  const doneCount = group.tasks.filter(isDone).length;
+  const complete = group.tasks.length > 0 && doneCount === group.tasks.length;
+
+  // The "add a task" form at the bottom of each card.
+  const nameInput = el('input', { type: 'text', id: 'new-task-' + group.id, placeholder: 'Add a task',
+                                  'aria-label': 'New task for ' + group.name });
+  const repeatSelect = el('select', { id: 'new-repeat-' + group.id, 'aria-label': 'How often' },
+    el('option', { value: 'daily' }, 'Daily'),
+    el('option', { value: 'once' }, 'Once'),
+  );
+  const addForm = el('form', { onsubmit: event => {
+      event.preventDefault();                  // stop the browser from reloading the page
+      const name = nameInput.value.trim();
+      if (name) addTask(group, name, repeatSelect.value);
+    } },
+    nameInput, repeatSelect, el('button', { type: 'submit' }, 'Add'),
+  );
+
+  // The delete control: a quiet link, or an "are you sure?" row.
+  const footer = pendingDeleteGroupId === group.id
+    ? el('div', { className: 'card-foot' },
+        el('span', {}, `Delete ${group.name} and its ${group.tasks.length} tasks?`),
+        el('button', { type: 'button', className: 'danger', onclick: () => deleteGroup(group) }, 'Delete'),
+        el('button', { type: 'button', onclick: () => { pendingDeleteGroupId = null; render(); } }, 'Cancel'))
+    : el('div', { className: 'card-foot' },
+        el('button', { type: 'button', className: 'link',
+                       onclick: () => { pendingDeleteGroupId = group.id; render(); } }, 'Delete group'));
+
+  return el('section', { className: complete ? 'group is-complete' : 'group' },
+    el('header', { className: 'group-head' },
+      el('div', {}, el('h2', {}, group.name), group.note ? el('p', { className: 'note' }, group.note) : null),
+      el('span', { className: 'count' }, `${doneCount}/${group.tasks.length}`),
+    ),
+    group.tasks.length
+      ? el('ul', { className: 'tasks' }, ...group.tasks.map(task => renderTask(group, task)))
+      : el('p', { className: 'empty' }, 'No tasks yet.'),
+    addForm,
+    footer,
+  );
+}
+
+function renderNewGroupCard() {
+  const nameInput = el('input', { type: 'text', id: 'new-group-name', placeholder: 'Name, e.g. Thrall',
+                                  'aria-label': 'Group name' });
+  const noteInput = el('input', { type: 'text', id: 'new-group-note', placeholder: 'Note, e.g. Area 52',
+                                  'aria-label': 'Group note (optional)' });
+  return el('section', { className: 'group new-group' },
+    el('h2', {}, 'New group'),
+    el('form', { onsubmit: event => {
+        event.preventDefault();
+        const name = nameInput.value.trim();
+        if (name) addGroup(name, noteInput.value.trim());
+      } },
+      nameInput, noteInput, el('button', { type: 'submit', className: 'primary' }, 'Add group'),
+    ),
+  );
+}
+
+// The countdown and the "X of Y done" line. Runs every 30 seconds.
+function renderHeader() {
+  const now = new Date();
+  const msLeft = nextReset(now) - now;
+  const hours = Math.floor(msLeft / 3600000);
+  const minutes = Math.floor((msLeft % 3600000) / 60000);
+  document.getElementById('countdown').textContent = `${hours}h ${String(minutes).padStart(2, '0')}m`;
+
+  const resetAt = new Date(now); resetAt.setHours(RESET_HOUR, 0, 0, 0);
+  document.getElementById('reset-label').textContent =
+    'Daily reset at ' + resetAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' in';
+
+  const allTasks = board.groups.flatMap(g => g.tasks);
+  const doneCount = allTasks.filter(isDone).length;
+  document.getElementById('summary').textContent = allTasks.length
+    ? `${doneCount} of ${allTasks.length} done · ${allTasks.length - doneCount} left`
+    : 'Add a group to get started.';
+}
+
+let drawnForReset = null;   // which reset period the cards were last drawn for
+
+function render() {
+  renderHeader();
+  document.getElementById('example-banner').hidden = !board.groups.some(g => g.example);
+
+  const container = document.getElementById('groups');
+  container.replaceChildren(...board.groups.map(renderGroup), renderNewGroupCard());
+  drawnForReset = lastReset(new Date()).getTime();
+
+  if (focusInputId) {
+    document.getElementById(focusInputId)?.focus();
+    focusInputId = null;
+  }
+}
+
+
+// ===== 6. START ========================================================
+document.getElementById('clear-examples').addEventListener('click', clearExamples);
+render();
+
+// Every 30 seconds: update the countdown. If a reset just happened,
+// redraw the cards so daily tasks uncheck themselves.
+setInterval(() => {
+  if (lastReset(new Date()).getTime() !== drawnForReset) render();
+  else renderHeader();
+}, 30000);
+</script>
+</body>
+</html>
